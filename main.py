@@ -2,7 +2,7 @@
 Quick-and-dirty local maintainability probe.
 
 Usage:
-    python quality.py /path/to/project
+    python main.py /path/to/project
 """
 
 import argparse
@@ -16,6 +16,9 @@ from radon.raw import analyze
 from radon.complexity import cc_visit, cc_rank
 from radon.metrics import mi_visit, mi_rank
 from complexipy import file_complexity
+
+MI_LOW = 60.0  # below this: "watch"
+MI_HIGH = 80.0  # above this: "high"
 
 
 @dataclass
@@ -172,9 +175,7 @@ def summarize(files: list[FileMetrics], root: Path) -> ProjectSummary:
     total_sloc = sum(f.sloc for f in files)
     mi_values = [f.mi for f in files if f.mi > 0]
 
-    LOW_MI_THRESHOLD = 65.0  # tweak to taste
-
-    low_mi_files = sum(f.mi < LOW_MI_THRESHOLD for f in files)
+    low_mi_files = sum(f.mi < MI_LOW for f in files)
 
     high_cc = 0
     grade_counts: dict[str, int] = {}
@@ -214,24 +215,36 @@ def summarize(files: list[FileMetrics], root: Path) -> ProjectSummary:
 def print_hotspots(
     files: list[FileMetrics],
     functions: list[FunctionMetrics],
-    mi_low_threshold: float = 65.0,
-    mi_target: float = 85.0,
+    *,
+    mi_low_threshold: float = MI_LOW,
+    mi_target: float = MI_HIGH,
     cx_function_target: int = 15,
     top_n: int = 5,
+    root: Path | None = None,
 ) -> None:
+    def rel(p: str) -> str:
+        if root is None:
+            return p
+        try:
+            return str(Path(p).relative_to(root))
+        except ValueError:
+            return p
+
     print(
         f"\nTop {top_n} lowest MI files "
-        f"(MI < {mi_low_threshold} = difficult, >= {mi_target} = high):"
+        f"(MI < {mi_low_threshold} = watch, >= {mi_target} = high):"
     )
-    worst_files = sorted(files, key=lambda f: f.mi)[:top_n]
+    # caring more about app code than tests for MI
+    non_test_files = [f for f in files if "/tests/" not in f.path]
+    worst_files = sorted(non_test_files, key=lambda f: f.mi)[:top_n]
     for f in worst_files:
         if f.mi < mi_low_threshold:
-            label = "LOW"
+            label = "WATCH"
         elif f.mi >= mi_target:
-            label = "HIGH"
+            label = "GOOD"
         else:
-            label = "MED"
-        print(f"  {f.mi:5.1f} [{label}]  {f.path}")
+            label = "OK"
+        print(f"  {f.mi:5.1f} [{label}]  {rel(f.path)}")
 
     print(
         f"\nTop {top_n} most complex functions "
@@ -243,8 +256,7 @@ def print_hotspots(
     for fn in worst_fns:
         flag = "OVER" if fn.cognitive_complexity > cx_function_target else "OK"
         print(
-            f"  {fn.cognitive_complexity:3d} [{flag}]  "
-            f"{fn.file}:{fn.lineno}  {fn.name}"
+            f"  {fn.cognitive_complexity:3d} [{flag}]  {rel(fn.file)}:{fn.lineno}  {fn.name}"
         )
 
 
@@ -293,9 +305,13 @@ def main() -> None:
     print(f"  Avg SLOC per file          : {summary.avg_sloc_per_file:.1f}")
     print(
         f"  Avg MI (all files)         : {summary.avg_mi:.1f}  "
-        "(65–85 = moderate, >85 = high)"
+        f"(<{MI_LOW:.0f} = watch, {MI_LOW:.0f}–{MI_HIGH:.0f} = moderate, >{MI_HIGH:.0f} = high)"
     )
-    print(f"  Files with low MI (<65)    : {summary.low_mi_files}")
+    print(
+        "  Note: MI is a heuristic; use it to compare files and track trends, "
+        "not as an absolute judgement."
+    )
+    print(f"  Files with low MI (<{MI_LOW:.0f})    : {summary.low_mi_files}")
     print(f"  High-CC funcs (D/E/F)      : {summary.high_complexity_functions}")
     print("  CC grades (all files)      :")
     for grade in sorted(summary.cc_grade_counts):
@@ -308,7 +324,7 @@ def main() -> None:
     print(f"\n  Avg cognitive complexity   : {summary.avg_cognitive_complexity:.1f}")
     print(f"  Max cognitive complexity   : {summary.max_cognitive_complexity}")
 
-    print_hotspots(file_metrics, function_metrics)
+    print_hotspots(file_metrics, function_metrics, root=root)
 
     print(
         "\nRun this before and after a training cycle, then diff the JSON "
