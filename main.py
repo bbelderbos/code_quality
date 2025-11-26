@@ -11,6 +11,8 @@ import json
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from statistics import mean
+import subprocess
+import sys
 
 from radon.raw import analyze
 from radon.complexity import cc_visit, cc_rank
@@ -61,6 +63,12 @@ class ProjectSummary:
     typing_coverage: float
     avg_cognitive_complexity: float
     max_cognitive_complexity: int
+
+
+@dataclass
+class SecuritySummary:
+    issues_total: int
+    issues_by_severity: dict[str, int]
 
 
 def count_typed_functions(code: str) -> tuple[int, int]:
@@ -260,6 +268,44 @@ def print_hotspots(
         )
 
 
+def run_bandit(root: Path) -> SecuritySummary | None:
+    try:
+        cmd = [
+            sys.executable,
+            "-m",
+            "bandit",
+            "-r",
+            str(root),
+            "-f",
+            "json",
+            "-q",  # quiet: no progress bar noise
+        ]
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        raise SystemExit("Error: Bandit is not installed or failed to run.")
+
+    try:
+        data = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return None
+
+    issues = data.get("results", [])
+    severity_counts: dict[str, int] = {}
+    for issue in issues:
+        sev = issue.get("issue_severity", "UNKNOWN").upper()
+        severity_counts[sev] = severity_counts.get(sev, 0) + 1
+
+    return SecuritySummary(
+        issues_total=len(issues),
+        issues_by_severity=severity_counts,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Quick PyBites maintainability probe (static only)."
@@ -275,6 +321,12 @@ def main() -> None:
         action="store_true",
         help="Output JSON instead of human-readable text",
     )
+    parser.add_argument(
+        "--with-bandit",
+        action="store_true",
+        help="Also run Bandit and include a security summary",
+    )
+
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
@@ -294,6 +346,10 @@ def main() -> None:
         function_metrics.extend(fns)
 
     summary = summarize(file_metrics, root)
+
+    sec_summary = None
+    if args.with_bandit:
+        sec_summary = run_bandit(root)
 
     if args.json:
         print(json.dumps(asdict(summary), indent=2))
@@ -325,6 +381,13 @@ def main() -> None:
     print(f"  Max cognitive complexity   : {summary.max_cognitive_complexity}")
 
     print_hotspots(file_metrics, function_metrics, root=root)
+
+    if sec_summary is not None:
+        print("\nSecurity (Bandit):")
+        print(f"  Total issues              : {sec_summary.issues_total}")
+        for sev, count in sorted(sec_summary.issues_by_severity.items(), reverse=True):
+            print(f"    {sev}: {count}")
+        print("  (Use `bandit -r ... -f html` for a detailed security report.)")
 
     print(
         "\nRun this before and after a training cycle, then diff the JSON "
