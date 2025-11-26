@@ -2,7 +2,7 @@
 Quick-and-dirty local maintainability probe.
 
 Usage:
-    python quality.py /path/to/project
+    python main.py /path/to/project
 """
 
 import argparse
@@ -175,9 +175,7 @@ def summarize(files: list[FileMetrics], root: Path) -> ProjectSummary:
     total_sloc = sum(f.sloc for f in files)
     mi_values = [f.mi for f in files if f.mi > 0]
 
-    LOW_MI_THRESHOLD = 65.0  # tweak to taste
-
-    low_mi_files = sum(f.mi < LOW_MI_THRESHOLD for f in files)
+    low_mi_files = sum(f.mi < MI_LOW for f in files)
 
     high_cc = 0
     grade_counts: dict[str, int] = {}
