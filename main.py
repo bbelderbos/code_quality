@@ -17,6 +17,9 @@ from radon.complexity import cc_visit, cc_rank
 from radon.metrics import mi_visit, mi_rank
 from complexipy import file_complexity
 
+MI_LOW = 60.0  # below this: "watch"
+MI_HIGH = 80.0  # above this: "high"
+
 
 @dataclass
 class FileMetrics:
@@ -214,8 +217,8 @@ def summarize(files: list[FileMetrics], root: Path) -> ProjectSummary:
 def print_hotspots(
     files: list[FileMetrics],
     functions: list[FunctionMetrics],
-    mi_low_threshold: float = 65.0,
-    mi_target: float = 85.0,
+    mi_low_threshold: float = MI_LOW,
+    mi_target: float = MI_HIGH,
     cx_function_target: int = 15,
     top_n: int = 5,
 ) -> None:
@@ -223,14 +226,16 @@ def print_hotspots(
         f"\nTop {top_n} lowest MI files "
         f"(MI < {mi_low_threshold} = difficult, >= {mi_target} = high):"
     )
-    worst_files = sorted(files, key=lambda f: f.mi)[:top_n]
+    # caring more about app code than tests for MI
+    non_test_files = [f for f in files if "/tests/" not in f.path]
+    worst_files = sorted(non_test_files, key=lambda f: f.mi)[:top_n]
     for f in worst_files:
         if f.mi < mi_low_threshold:
-            label = "LOW"
+            label = "WATCH"
         elif f.mi >= mi_target:
-            label = "HIGH"
+            label = "GOOD"
         else:
-            label = "MED"
+            label = "OK"
         print(f"  {f.mi:5.1f} [{label}]  {f.path}")
 
     print(
@@ -243,8 +248,7 @@ def print_hotspots(
     for fn in worst_fns:
         flag = "OVER" if fn.cognitive_complexity > cx_function_target else "OK"
         print(
-            f"  {fn.cognitive_complexity:3d} [{flag}]  "
-            f"{fn.file}:{fn.lineno}  {fn.name}"
+            f"  {fn.cognitive_complexity:3d} [{flag}]  {fn.file}:{fn.lineno}  {fn.name}"
         )
 
 
@@ -293,9 +297,13 @@ def main() -> None:
     print(f"  Avg SLOC per file          : {summary.avg_sloc_per_file:.1f}")
     print(
         f"  Avg MI (all files)         : {summary.avg_mi:.1f}  "
-        "(65–85 = moderate, >85 = high)"
+        f"(<{MI_LOW:.0f} = watch, {MI_LOW:.0f}–{MI_HIGH:.0f} = moderate, >{MI_HIGH:.0f} = high)"
     )
-    print(f"  Files with low MI (<65)    : {summary.low_mi_files}")
+    print(
+        "  Note: MI is a heuristic; use it to compare files and track trends, "
+        "not as an absolute judgement."
+    )
+    print(f"  Files with low MI (<{MI_LOW:.0f})    : {summary.low_mi_files}")
     print(f"  High-CC funcs (D/E/F)      : {summary.high_complexity_functions}")
     print("  CC grades (all files)      :")
     for grade in sorted(summary.cc_grade_counts):
