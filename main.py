@@ -36,6 +36,14 @@ class FileMetrics:
 
 
 @dataclass
+class FunctionMetrics:
+    file: str
+    name: str
+    lineno: int
+    cognitive_complexity: int
+
+
+@dataclass
 class ProjectSummary:
     root: str
     files_scanned: int
@@ -89,13 +97,12 @@ def count_typed_functions(code: str) -> tuple[int, int]:
     return total, typed
 
 
-def analyze_file(path: Path) -> FileMetrics | None:
+def analyze_file(path: Path) -> tuple[FileMetrics, list[FunctionMetrics]] | None:
     try:
         code = path.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         return None
 
-    # Radon metrics
     raw = analyze(code)
     cc_results = cc_visit(code)
     mi_value = mi_visit(code, multi=True)
@@ -112,15 +119,27 @@ def analyze_file(path: Path) -> FileMetrics | None:
             worst_cc = r.complexity
             worst_rank = grade
 
-    # complexipy – cognitive complexity
+    # --- complexipy: file + per-function cognitive complexity ---
     cx_result = file_complexity(str(path))
     file_cx = int(cx_result.complexity)
-    max_func_cx = max((int(f.complexity) for f in cx_result.functions), default=0)
 
-    # AST – typing coverage
+    fn_metrics: list[FunctionMetrics] = []
+    max_func_cx = 0
+    for fn in cx_result.functions:
+        c = int(fn.complexity)
+        max_func_cx = max(max_func_cx, c)
+        fn_metrics.append(
+            FunctionMetrics(
+                file=str(path),
+                name=fn.name,
+                lineno=fn.line_start,
+                cognitive_complexity=c,
+            )
+        )
+
     total_funcs, typed_funcs = count_typed_functions(code)
 
-    return FileMetrics(
+    file_metrics = FileMetrics(
         path=str(path),
         sloc=raw.sloc,
         lloc=raw.lloc,
@@ -135,6 +154,8 @@ def analyze_file(path: Path) -> FileMetrics | None:
         cognitive_complexity=file_cx,
         max_function_cognitive_complexity=max_func_cx,
     )
+
+    return file_metrics, fn_metrics
 
 
 def walk_python_files(root: Path) -> list[Path]:
@@ -190,6 +211,43 @@ def summarize(files: list[FileMetrics], root: Path) -> ProjectSummary:
     )
 
 
+def print_hotspots(
+    files: list[FileMetrics],
+    functions: list[FunctionMetrics],
+    mi_low_threshold: float = 65.0,
+    mi_target: float = 85.0,
+    cx_function_target: int = 15,
+    top_n: int = 5,
+) -> None:
+    print(
+        f"\nTop {top_n} lowest MI files "
+        f"(MI < {mi_low_threshold} = difficult, >= {mi_target} = high):"
+    )
+    worst_files = sorted(files, key=lambda f: f.mi)[:top_n]
+    for f in worst_files:
+        if f.mi < mi_low_threshold:
+            label = "LOW"
+        elif f.mi >= mi_target:
+            label = "HIGH"
+        else:
+            label = "MED"
+        print(f"  {f.mi:5.1f} [{label}]  {f.path}")
+
+    print(
+        f"\nTop {top_n} most complex functions "
+        f"(target cognitive complexity <= {cx_function_target}):"
+    )
+    worst_fns = sorted(functions, key=lambda fn: fn.cognitive_complexity, reverse=True)[
+        :top_n
+    ]
+    for fn in worst_fns:
+        flag = "OVER" if fn.cognitive_complexity > cx_function_target else "OK"
+        print(
+            f"  {fn.cognitive_complexity:3d} [{flag}]  "
+            f"{fn.file}:{fn.lineno}  {fn.name}"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Quick PyBites maintainability probe (static only)."
@@ -213,10 +271,15 @@ def main() -> None:
 
     py_files = walk_python_files(root)
     file_metrics: list[FileMetrics] = []
+    function_metrics: list[FunctionMetrics] = []
+
     for path in py_files:
-        m = analyze_file(path)
-        if m is not None:
-            file_metrics.append(m)
+        result = analyze_file(path)
+        if result is None:
+            continue
+        fm, fns = result
+        file_metrics.append(fm)
+        function_metrics.extend(fns)
 
     summary = summarize(file_metrics, root)
 
@@ -228,7 +291,10 @@ def main() -> None:
     print(f"  Files scanned              : {summary.files_scanned}")
     print(f"  Total SLOC                 : {summary.total_sloc}")
     print(f"  Avg SLOC per file          : {summary.avg_sloc_per_file:.1f}")
-    print(f"  Avg MI (all files)         : {summary.avg_mi:.1f}")
+    print(
+        f"  Avg MI (all files)         : {summary.avg_mi:.1f}  "
+        "(65–85 = moderate, >85 = high)"
+    )
     print(f"  Files with low MI (<65)    : {summary.low_mi_files}")
     print(f"  High-CC funcs (D/E/F)      : {summary.high_complexity_functions}")
     print("  CC grades (all files)      :")
@@ -242,8 +308,11 @@ def main() -> None:
     print(f"\n  Avg cognitive complexity   : {summary.avg_cognitive_complexity:.1f}")
     print(f"  Max cognitive complexity   : {summary.max_cognitive_complexity}")
 
+    print_hotspots(file_metrics, function_metrics)
+
     print(
-        "\nRun this before and after a training cycle, then diff the JSON output for trends."
+        "\nRun this before and after a training cycle, then diff the JSON "
+        "output and hotspot lists for trends."
     )
 
 
