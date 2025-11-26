@@ -217,14 +217,24 @@ def summarize(files: list[FileMetrics], root: Path) -> ProjectSummary:
 def print_hotspots(
     files: list[FileMetrics],
     functions: list[FunctionMetrics],
+    *,
     mi_low_threshold: float = MI_LOW,
     mi_target: float = MI_HIGH,
     cx_function_target: int = 15,
     top_n: int = 5,
+    root: Path | None = None,
 ) -> None:
+    def rel(p: str) -> str:
+        if root is None:
+            return p
+        try:
+            return str(Path(p).relative_to(root))
+        except ValueError:
+            return p
+
     print(
         f"\nTop {top_n} lowest MI files "
-        f"(MI < {mi_low_threshold} = difficult, >= {mi_target} = high):"
+        f"(MI < {mi_low_threshold} = watch, >= {mi_target} = high):"
     )
     # caring more about app code than tests for MI
     non_test_files = [f for f in files if "/tests/" not in f.path]
@@ -236,7 +246,7 @@ def print_hotspots(
             label = "GOOD"
         else:
             label = "OK"
-        print(f"  {f.mi:5.1f} [{label}]  {f.path}")
+        print(f"  {f.mi:5.1f} [{label}]  {rel(f.path)}")
 
     print(
         f"\nTop {top_n} most complex functions "
@@ -248,7 +258,7 @@ def print_hotspots(
     for fn in worst_fns:
         flag = "OVER" if fn.cognitive_complexity > cx_function_target else "OK"
         print(
-            f"  {fn.cognitive_complexity:3d} [{flag}]  {fn.file}:{fn.lineno}  {fn.name}"
+            f"  {fn.cognitive_complexity:3d} [{flag}]  {rel(fn.file)}:{fn.lineno}  {fn.name}"
         )
 
 
@@ -316,7 +326,7 @@ def main() -> None:
     print(f"\n  Avg cognitive complexity   : {summary.avg_cognitive_complexity:.1f}")
     print(f"  Max cognitive complexity   : {summary.max_cognitive_complexity}")
 
-    print_hotspots(file_metrics, function_metrics)
+    print_hotspots(file_metrics, function_metrics, root=root)
 
     print(
         "\nRun this before and after a training cycle, then diff the JSON "
