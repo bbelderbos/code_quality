@@ -12,7 +12,7 @@ It uses:
 
 ```bash
 git clone git@github.com:bbelderbos/code_quality.git
-cd code_qality
+cd code_quality
 uv sync
 ```
 
