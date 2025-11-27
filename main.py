@@ -1,8 +1,11 @@
 """
-Quick-and-dirty local maintainability probe.
+Pybites code quality probe.
+
+Scans a Python project for maintainability (MI), complexity, typing coverage,
+and optional security issues, then prints a summary and hotspots.
 
 Usage:
-    python main.py /path/to/project
+    python quality.py [options] /path/to/project
 """
 
 import argparse
@@ -16,9 +19,11 @@ from radon.raw import analyze
 from radon.complexity import cc_visit, cc_rank
 from radon.metrics import mi_visit, mi_rank
 from complexipy import file_complexity
+from decouple import config
 
-MI_LOW = 60.0  # below this: "watch"
-MI_HIGH = 80.0  # above this: "high"
+MI_LOW = config("PYBITES_QUALITY_MI_LOW", default=60.0, cast=float)
+MI_HIGH = config("PYBITES_QUALITY_MI_HIGH", default=80.0, cast=float)
+TYPING_TARGET = config("PYBITES_QUALITY_TYPING_TARGET", default=80.0, cast=float)
 
 
 @dataclass
@@ -275,6 +280,19 @@ def main() -> None:
         action="store_true",
         help="Output JSON instead of human-readable text",
     )
+    parser.add_argument(
+        "--fail-mi-below",
+        type=float,
+        default=MI_LOW,
+        help="Fail if average MI is below this value",
+    )
+    parser.add_argument(
+        "--fail-typing-below",
+        type=float,
+        default=TYPING_TARGET,
+        help="Fail if typing coverage (functions) is below this value",
+    )
+
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
