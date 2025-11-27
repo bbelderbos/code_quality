@@ -28,6 +28,8 @@ Use `--json` to get machine-readable output you can diff over time:
 uv run quality.py /path/to/project --json > baseline.json
 ```
 
+TODO: add diff'ing to see how code quality has changed over time.
+
 ## What the metrics mean
 
 - **MI (Maintainability Index)**  
@@ -91,10 +93,29 @@ Run this before and after a training cycle, then diff the JSON output and hotspo
 
 ## Typical Pybites use
 
-1. Run this once to create a **baseline** for a client repo.
+1. Run this once to create a **baseline** for a target repo.
 2. After a Pybites training period, run it again.
 3. Compare JSON snapshots and hotspot lists to show improvements in:
    - Maintainability Index (especially “watch” files)
    - High-complexity functions
    - Typing coverage
    - Cognitive complexity in key modules.
+
+## Exit code
+
+You can make the script fail (exit code != 0) based on thresholds using these options:
+
+```text
+$ uv run quality.py --help
+...
+  --fail-mi-below FAIL_MI_BELOW
+                        Fail if average MI is below this value
+  --fail-typing-below FAIL_TYPING_BELOW
+                        Fail if typing coverage (functions) is below this value
+```
+
+If the average MI is below `mi_threshold` or typing coverage is below `typing_threshold`, the script will exit with code 1.
+
+You can either specify these thresholds via command-line arguments or set them as environment variables: `PYBITES_QUALITY_FAIL_MI_BELOW` and `PYBITES_QUALITY_FAIL_TYPING_BELOW`.
+
+If neither are used, we default to a `MI_LOW` of 60 and a `TYPING_TARGET` of 80.

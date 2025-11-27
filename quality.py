@@ -21,7 +21,7 @@ from radon.metrics import mi_visit, mi_rank
 from complexipy import file_complexity
 from decouple import config
 
-MI_LOW = 80.0
+MI_LOW = 60.0
 MI_HIGH = 80.0
 TYPING_TARGET = 80.0
 
