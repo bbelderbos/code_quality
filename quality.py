@@ -295,12 +295,19 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    mi_threshold = args.fail_mi_below or config(
-        "PYBITES_QUALITY_FAIL_MI_BELOW", MI_LOW, cast=float
-    )
-    typing_threshold = args.fail_typing_below or config(
-        "PYBITES_QUALITY_FAIL_TYPING_BELOW", TYPING_TARGET, cast=float
-    )
+    if args.fail_mi_below is not None:
+        mi_threshold = args.fail_mi_below
+    else:
+        mi_threshold = config(
+            "PYBITES_QUALITY_FAIL_MI_BELOW", default=MI_LOW, cast=float
+        )
+
+    if args.fail_typing_below is not None:
+        typing_threshold = args.fail_typing_below
+    else:
+        typing_threshold = config(
+            "PYBITES_QUALITY_FAIL_TYPING_BELOW", default=TYPING_TARGET, cast=float
+        )
 
     root = Path(args.root).resolve()
     if not root.exists():
