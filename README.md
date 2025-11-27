@@ -19,13 +19,13 @@ uv sync
 ## Usage
 
 ```bash
-uv run main.py /path/to/project
+uv run quality.py /path/to/project
 ```
 
 Use `--json` to get machine-readable output you can diff over time:
 
 ```bash
-uv run main.py /path/to/project --json > baseline.json
+uv run quality.py /path/to/project --json > baseline.json
 ```
 
 ## What the metrics mean
@@ -51,7 +51,7 @@ uv run main.py /path/to/project --json > baseline.json
 ## Example output
 
 ```text
-$ uv run main.py ~/code/search
+$ uv run quality.py ~/code/search
 Pybites maintainability snapshot for: /Users/bbelderbos/code/search
   Files scanned              : 16
   Total SLOC                 : 591
