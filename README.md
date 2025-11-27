@@ -119,3 +119,27 @@ If the average MI is below `mi_threshold` or typing coverage is below `typing_th
 You can either specify these thresholds via command-line arguments or set them as environment variables: `PYBITES_QUALITY_FAIL_MI_BELOW` and `PYBITES_QUALITY_FAIL_TYPING_BELOW`.
 
 If neither are used, we default to a `MI_LOW` of 60 and a `TYPING_TARGET` of 80.
+
+## Pre-commit integration
+
+Add this to your `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/pybites/code_quality
+    rev: v0.1.0
+    hooks:
+      - id: pybites-quality
+        args: ["--fail-mi-below", "60", "--fail-typing-below", "80"]
+```
+
+Or leave `args` off if you want to control these by env vars or just use the script defaults.
+
+Then run:
+
+```bash
+uvx pre-commit install
+```
+
+Now it should run on each commit, preventing commits that lower code quality below your thresholds.
+
