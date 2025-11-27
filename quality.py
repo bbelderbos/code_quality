@@ -21,9 +21,9 @@ from radon.metrics import mi_visit, mi_rank
 from complexipy import file_complexity
 from decouple import config
 
-MI_LOW = config("PYBITES_QUALITY_MI_LOW", default=60.0, cast=float)
-MI_HIGH = config("PYBITES_QUALITY_MI_HIGH", default=80.0, cast=float)
-TYPING_TARGET = config("PYBITES_QUALITY_TYPING_TARGET", default=80.0, cast=float)
+MI_LOW = 80.0
+MI_HIGH = 80.0
+TYPING_TARGET = 80.0
 
 
 @dataclass
@@ -283,17 +283,24 @@ def main() -> None:
     parser.add_argument(
         "--fail-mi-below",
         type=float,
-        default=MI_LOW,
+        default=None,
         help="Fail if average MI is below this value",
     )
     parser.add_argument(
         "--fail-typing-below",
         type=float,
-        default=TYPING_TARGET,
+        default=None,
         help="Fail if typing coverage (functions) is below this value",
     )
 
     args = parser.parse_args()
+
+    mi_threshold = args.fail_mi_below or config(
+        "PYBITES_QUALITY_FAIL_MI_BELOW", MI_LOW, cast=float
+    )
+    typing_threshold = args.fail_typing_below or config(
+        "PYBITES_QUALITY_FAIL_TYPING_BELOW", TYPING_TARGET, cast=float
+    )
 
     root = Path(args.root).resolve()
     if not root.exists():
@@ -343,6 +350,25 @@ def main() -> None:
     print(f"  Max cognitive complexity   : {summary.max_cognitive_complexity}")
 
     print_hotspots(file_metrics, function_metrics, root=root)
+
+    fail = False
+    if summary.avg_mi < mi_threshold:
+        fail = True
+        print(
+            f"\n[FAIL] Average MI {summary.avg_mi:.1f} "
+            f"is below threshold {mi_threshold:.1f}"
+        )
+
+    if summary.typing_coverage < typing_threshold:
+        fail = True
+        print(
+            f"[FAIL] Typing coverage {summary.typing_coverage:.1f}% "
+            f"is below threshold {typing_threshold:.1f}%"
+        )
+
+    # 3) Exit based on fail flag
+    if fail:
+        raise SystemExit(1)
 
     print(
         "\nRun this before and after a training cycle, then diff the JSON "
