@@ -135,6 +135,16 @@ repos:
 
 Or leave `args` off if you want to control these by env vars or just use the script defaults.
 
+**Note:** By default, the hook scans the current directory (`.`) which means the entire repository is scanned on every commit. For large repositories, this may be slow. You can customize the scanned directory by adding a path argument:
+
+```yaml
+# Only scan the src directory
+args: ["src", "--fail-mi-below", "60", "--fail-typing-below", "80"]
+
+# Explicitly scan current directory (same as default)
+args: [".", "--fail-mi-below", "60"]
+```
+
 Then run:
 
 ```bash
