@@ -1,4 +1,3 @@
-# quality_tui.py
 import os
 from pathlib import Path
 import subprocess
