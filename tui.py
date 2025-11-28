@@ -263,12 +263,12 @@ class RepoPicker(Screen):
             if not query:
                 return 0
             if name.startswith(query):
-                return -2
+                return 2
             if query in name:
-                return -1
+                return 1
             return 0
 
-        matched = sorted(self._repos, key=score)
+        matched = sorted(self._repos, key=score, reverse=True)
         if query:
             matched = [p for p in matched if query in p.name.lower()]
 
