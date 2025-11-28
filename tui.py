@@ -70,7 +70,9 @@ def find_repos(base_dir: Path) -> Iterable[Path]:
     """Yield directories under base_dir that look like Python projects."""
     markers = {"pyproject.toml", "setup.cfg", "setup.py", ".git"}
     if not base_dir.is_dir():
-        raise FileNotFoundError(f"Base directory '{base_dir}' does not exist or is not a directory.")
+        raise FileNotFoundError(
+            f"Base directory '{base_dir}' does not exist or is not a directory."
+        )
     for entry in sorted(base_dir.iterdir()):
         if not entry.is_dir():
             continue
@@ -106,7 +108,7 @@ class QualityApp(App):
     BINDINGS = [
         ("q", "quit", "Quit"),
         ("r", "rescan", "Rescan current path"),
-        ("p", "pick_repo", "Pick repo under ~/code"),  # NEW
+        ("p", "pick_repo", "Pick repo under ~/code"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -276,7 +278,7 @@ class RepoPicker(Screen):
         self._matched = matched
 
         for p in matched:
-            ol.add_option(p.name)  # just label, no Option / id
+            ol.add_option(p.name)
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "repo-filter":
