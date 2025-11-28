@@ -24,6 +24,7 @@ from decouple import config
 MI_LOW = 60.0
 MI_HIGH = 80.0
 TYPING_TARGET = 80.0
+COGNITIVE_COMPLEXITY_TARGET = 15
 
 
 @dataclass
@@ -223,7 +224,7 @@ def print_hotspots(
     *,
     mi_low_threshold: float = MI_LOW,
     mi_target: float = MI_HIGH,
-    cx_function_target: int = 15,
+    cx_function_target: int = COGNITIVE_COMPLEXITY_TARGET,
     top_n: int = 5,
     root: Path | None = None,
 ) -> None:
