@@ -26,7 +26,7 @@ from quality import (
     FunctionMetrics,
     MI_LOW,
     MI_HIGH,
-    COGNITIVE_COMPLEXITY_THRESHOLD,
+    COGNITIVE_COMPLEXITY_TARGET,
 )
 
 DEFAULT_CODE_REPO = config("DEFAULT_CODE_REPO", default="~/code")
@@ -190,7 +190,7 @@ class QualityApp(App):
         # functions table
         self.funcs_table.clear()
         for fn in worst_fns:
-            if fn.cognitive_complexity > COGNITIVE_COMPLEXITY_THRESHOLD:
+            if fn.cognitive_complexity > COGNITIVE_COMPLEXITY_TARGET:
                 flag = "[bold red]OVER[/]"
                 cx_text = f"[bold red]{fn.cognitive_complexity}[/]"
             else:
