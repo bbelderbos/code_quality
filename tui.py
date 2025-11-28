@@ -1,8 +1,8 @@
-import os
 from pathlib import Path
 import subprocess
 from typing import Iterable
 
+from decouple import config
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
 from textual.events import Key
@@ -29,7 +29,8 @@ from quality import (
     COGNITIVE_COMPLEXITY_THRESHOLD,
 )
 
-DEFAULT_CODE_REPO = "~/code"
+DEFAULT_CODE_REPO = config("DEFAULT_CODE_REPO", default="~/code")
+DEFAULT_EDITOR = config("DEFAULT_EDITOR", default="vim")
 
 
 def scan_project(root: Path):
@@ -221,10 +222,8 @@ class QualityApp(App):
             file = fn.file  # absolute path from analyze_file
             line = fn.lineno
 
-            editor = os.environ.get("EDITOR", "vim")
-
             with self.suspend():
-                subprocess.run([editor, f"+{line}", file])
+                subprocess.run([DEFAULT_EDITOR, f"+{line}", file])
 
     def action_pick_repo(self) -> None:
         base = Path(DEFAULT_CODE_REPO).expanduser()
