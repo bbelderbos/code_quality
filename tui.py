@@ -70,7 +70,7 @@ def find_repos(base_dir: Path) -> Iterable[Path]:
     """Yield directories under base_dir that look like Python projects."""
     markers = {"pyproject.toml", "setup.cfg", "setup.py", ".git"}
     if not base_dir.is_dir():
-        return []
+        raise FileNotFoundError(f"Base directory '{base_dir}' does not exist or is not a directory.")
     for entry in sorted(base_dir.iterdir()):
         if not entry.is_dir():
             continue
