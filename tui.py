@@ -159,7 +159,10 @@ class QualityApp(App):
             f"[b]PyBites maintainability snapshot[/b]\n"
             f"Root: {summary.root}\n"
             f"Files scanned          : {summary.files_scanned}\n"
-            f"Files skipped (syntax) : {len(skipped)} ({', '.join(str(p) for p in skipped)})\n"
+        )
+        if skipped:
+            summary_text += f"Files skipped (syntax) : {len(skipped)} ({', '.join(str(p) for p in skipped)})\n"
+        summary_text += (
             f"Total SLOC             : {summary.total_sloc}\n"
             f"Avg SLOC per file      : {summary.avg_sloc_per_file:.1f}\n"
             f"Avg MI                 : {summary.avg_mi:.1f} "
