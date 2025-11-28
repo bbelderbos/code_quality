@@ -21,6 +21,7 @@ from textual.screen import Screen
 from quality import (
     analyze_file,
     summarize,
+    ProjectSummary,
     walk_python_files,
     FileMetrics,
     FunctionMetrics,
@@ -33,19 +34,21 @@ DEFAULT_CODE_REPO = config("DEFAULT_CODE_REPO", default="~/code")
 DEFAULT_EDITOR = config("DEFAULT_EDITOR", default="vim")
 
 
-def scan_project(root: Path):
+def scan_project(
+    root: Path,
+) -> tuple[ProjectSummary, list[FileMetrics], list[FunctionMetrics], list[Path]]:
     """Reuse your existing logic to compute summary + hotspots."""
     py_files = walk_python_files(root)
     file_metrics: list[FileMetrics] = []
     fn_metrics: list[FunctionMetrics] = []
 
-    skipped = 0
+    skipped = []
     for path in py_files:
         try:
             result = analyze_file(path)
         except SyntaxError:
             # Skip files radon can't parse (or optionally log them somewhere)
-            skipped += 1
+            skipped.append(path)
             continue
 
         if result is None:
@@ -157,7 +160,7 @@ class QualityApp(App):
             f"[b]PyBites maintainability snapshot[/b]\n"
             f"Root: {summary.root}\n"
             f"Files scanned          : {summary.files_scanned}\n"
-            f"Files skipped (syntax) : {skipped}\n"
+            f"Files skipped (syntax) : {len(skipped)} ({', '.join(str(p) for p in skipped)})\n"
             f"Total SLOC             : {summary.total_sloc}\n"
             f"Avg SLOC per file      : {summary.avg_sloc_per_file:.1f}\n"
             f"Avg MI                 : {summary.avg_mi:.1f} "
