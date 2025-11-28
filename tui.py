@@ -60,8 +60,9 @@ def scan_project(
 
     summary = summarize(file_metrics, root)
 
-    non_test_files = [f for f in file_metrics if "/tests/" not in f.path]
-    worst_files = sorted(non_test_files, key=lambda f: f.mi)[:10]
+    # TODO: do this test mod filter in one place (in quality.py)
+    files = [f for f in file_metrics if "/tests/" not in f.path]
+    worst_files = sorted(files, key=lambda f: f.mi)[:10]
     worst_fns = sorted(
         fn_metrics, key=lambda fn: fn.cognitive_complexity, reverse=True
     )[:10]

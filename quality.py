@@ -181,6 +181,8 @@ def summarize(files: list[FileMetrics], root: Path) -> ProjectSummary:
     total_sloc = sum(f.sloc for f in files)
     mi_values = [f.mi for f in files if f.mi > 0]
 
+    # exclude test files from low MI count
+    files = [f for f in files if "/tests/" not in f.path]
     low_mi_files = sum(f.mi < MI_LOW for f in files)
 
     high_cc = 0
@@ -241,6 +243,7 @@ def print_hotspots(
         f"(MI < {mi_low_threshold} = watch, >= {mi_target} = high):"
     )
     # caring more about app code than tests for MI
+    # TODO: do this test mod filter in one place
     non_test_files = [f for f in files if "/tests/" not in f.path]
     worst_files = sorted(non_test_files, key=lambda f: f.mi)[:top_n]
     for f in worst_files:
