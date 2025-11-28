@@ -157,7 +157,7 @@ class QualityApp(App):
 
         # summary text
         summary_text = (
-            f"[b]PyBites maintainability snapshot[/b]\n"
+            f"[b]Pybites maintainability snapshot[/b]\n"
             f"Root: {summary.root}\n"
             f"Files scanned          : {summary.files_scanned}\n"
         )

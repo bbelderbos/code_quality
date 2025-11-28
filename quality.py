@@ -271,7 +271,7 @@ def print_hotspots(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Quick PyBites maintainability probe (static only)."
+        description="Quick Pybites maintainability probe (static only)."
     )
     parser.add_argument(
         "root",
@@ -335,7 +335,7 @@ def main() -> None:
         print(json.dumps(asdict(summary), indent=2))
         return
 
-    print(f"PyBites maintainability snapshot for: {summary.root}")
+    print(f"Pybites maintainability snapshot for: {summary.root}")
     print(f"  Files scanned              : {summary.files_scanned}")
     print(f"  Total SLOC                 : {summary.total_sloc}")
     print(f"  Avg SLOC per file          : {summary.avg_sloc_per_file:.1f}")
