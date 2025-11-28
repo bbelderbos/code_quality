@@ -94,7 +94,6 @@ class QualityApp(App):
     }
 
     #summary {
-        height: 7;
         border: round $accent;
         padding: 1;
     }
