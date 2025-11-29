@@ -24,6 +24,7 @@ from decouple import config
 MI_LOW = 60.0
 MI_HIGH = 80.0
 TYPING_TARGET = 80.0
+COGNITIVE_COMPLEXITY_TARGET = 15
 
 
 @dataclass
@@ -180,6 +181,8 @@ def summarize(files: list[FileMetrics], root: Path) -> ProjectSummary:
     total_sloc = sum(f.sloc for f in files)
     mi_values = [f.mi for f in files if f.mi > 0]
 
+    # exclude test files from low MI count
+    files = [f for f in files if "/tests/" not in f.path]
     low_mi_files = sum(f.mi < MI_LOW for f in files)
 
     high_cc = 0
@@ -223,7 +226,7 @@ def print_hotspots(
     *,
     mi_low_threshold: float = MI_LOW,
     mi_target: float = MI_HIGH,
-    cx_function_target: int = 15,
+    cx_function_target: int = COGNITIVE_COMPLEXITY_TARGET,
     top_n: int = 5,
     root: Path | None = None,
 ) -> None:
@@ -240,6 +243,7 @@ def print_hotspots(
         f"(MI < {mi_low_threshold} = watch, >= {mi_target} = high):"
     )
     # caring more about app code than tests for MI
+    # TODO: do this test mod filter in one place
     non_test_files = [f for f in files if "/tests/" not in f.path]
     worst_files = sorted(non_test_files, key=lambda f: f.mi)[:top_n]
     for f in worst_files:
@@ -267,7 +271,7 @@ def print_hotspots(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Quick PyBites maintainability probe (static only)."
+        description="Quick Pybites maintainability probe (static only)."
     )
     parser.add_argument(
         "root",
@@ -331,7 +335,7 @@ def main() -> None:
         print(json.dumps(asdict(summary), indent=2))
         return
 
-    print(f"PyBites maintainability snapshot for: {summary.root}")
+    print(f"Pybites maintainability snapshot for: {summary.root}")
     print(f"  Files scanned              : {summary.files_scanned}")
     print(f"  Total SLOC                 : {summary.total_sloc}")
     print(f"  Avg SLOC per file          : {summary.avg_sloc_per_file:.1f}")
