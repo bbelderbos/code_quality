@@ -178,36 +178,46 @@ def walk_python_files(root: Path) -> list[Path]:
 
 
 def summarize(files: list[FileMetrics], root: Path) -> ProjectSummary:
-    total_sloc = sum(f.sloc for f in files)
-    mi_values = [f.mi for f in files if f.mi > 0]
+    total_sloc = 0
+    mi_values = []
+    total_functions = 0
+    typed_functions = 0
 
-    # exclude test files from low MI count
-    files = [f for f in files if "/tests/" not in f.path]
-    low_mi_files = sum(f.mi < MI_LOW for f in files)
+    files_filtered = []
+    for f in files:
+        total_sloc += f.sloc
+        if f.mi > 0:
+            mi_values.append(f.mi)
+        if "/tests/" not in f.path:
+            files_filtered.append(f)
+            total_functions += f.total_functions
+            typed_functions += f.typed_functions
 
+    low_mi_files = 0
     high_cc = 0
     grade_counts: dict[str, int] = {}
-    for f in files:
+    cx_values = []
+
+    for f in files_filtered:
+        if f.mi < MI_LOW:
+            low_mi_files += 1
+        cx_values.append(f.cognitive_complexity)
         for grade, count in f.complexity_grades.items():
             grade_counts[grade] = grade_counts.get(grade, 0) + count
             if grade in ("D", "E", "F"):
                 high_cc += count
 
-    total_functions = sum(f.total_functions for f in files)
-    typed_functions = sum(f.typed_functions for f in files)
     typing_coverage = (
         typed_functions / total_functions * 100 if total_functions else 0.0
     )
-
-    cx_values = [f.cognitive_complexity for f in files]
     avg_cx = mean(cx_values) if cx_values else 0.0
     max_cx = max(cx_values) if cx_values else 0
 
     return ProjectSummary(
         root=str(root),
-        files_scanned=len(files),
+        files_scanned=len(files_filtered),
         total_sloc=total_sloc,
-        avg_sloc_per_file=total_sloc / len(files) if files else 0.0,
+        avg_sloc_per_file=total_sloc / len(files_filtered) if files_filtered else 0.0,
         avg_mi=mean(mi_values) if mi_values else 0.0,
         low_mi_files=low_mi_files,
         high_complexity_functions=high_cc,
