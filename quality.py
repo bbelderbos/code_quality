@@ -1,8 +1,11 @@
 """
-Quick-and-dirty local maintainability probe.
+Pybites code quality probe.
+
+Scans a Python project for maintainability (MI), complexity, typing coverage,
+and optional security issues, then prints a summary and hotspots.
 
 Usage:
-    python main.py /path/to/project
+    python quality.py [options] /path/to/project
 """
 
 import argparse
@@ -16,9 +19,12 @@ from radon.raw import analyze
 from radon.complexity import cc_visit, cc_rank
 from radon.metrics import mi_visit, mi_rank
 from complexipy import file_complexity
+from decouple import config
 
-MI_LOW = 60.0  # below this: "watch"
-MI_HIGH = 80.0  # above this: "high"
+MI_LOW = 60.0
+MI_HIGH = 80.0
+TYPING_TARGET = 80.0
+COGNITIVE_COMPLEXITY_TARGET = 15
 
 
 @dataclass
@@ -175,6 +181,8 @@ def summarize(files: list[FileMetrics], root: Path) -> ProjectSummary:
     total_sloc = sum(f.sloc for f in files)
     mi_values = [f.mi for f in files if f.mi > 0]
 
+    # exclude test files from low MI count
+    files = [f for f in files if "/tests/" not in f.path]
     low_mi_files = sum(f.mi < MI_LOW for f in files)
 
     high_cc = 0
@@ -218,7 +226,7 @@ def print_hotspots(
     *,
     mi_low_threshold: float = MI_LOW,
     mi_target: float = MI_HIGH,
-    cx_function_target: int = 15,
+    cx_function_target: int = COGNITIVE_COMPLEXITY_TARGET,
     top_n: int = 5,
     root: Path | None = None,
 ) -> None:
@@ -235,6 +243,7 @@ def print_hotspots(
         f"(MI < {mi_low_threshold} = watch, >= {mi_target} = high):"
     )
     # caring more about app code than tests for MI
+    # TODO: do this test mod filter in one place
     non_test_files = [f for f in files if "/tests/" not in f.path]
     worst_files = sorted(non_test_files, key=lambda f: f.mi)[:top_n]
     for f in worst_files:
@@ -262,7 +271,7 @@ def print_hotspots(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Quick PyBites maintainability probe (static only)."
+        description="Quick Pybites maintainability probe (static only)."
     )
     parser.add_argument(
         "root",
@@ -275,7 +284,34 @@ def main() -> None:
         action="store_true",
         help="Output JSON instead of human-readable text",
     )
+    parser.add_argument(
+        "--fail-mi-below",
+        type=float,
+        default=None,
+        help="Fail if average MI is below this value",
+    )
+    parser.add_argument(
+        "--fail-typing-below",
+        type=float,
+        default=None,
+        help="Fail if typing coverage (functions) is below this value",
+    )
+
     args = parser.parse_args()
+
+    if args.fail_mi_below is not None:
+        mi_threshold = args.fail_mi_below
+    else:
+        mi_threshold = config(
+            "PYBITES_QUALITY_FAIL_MI_BELOW", default=MI_LOW, cast=float
+        )
+
+    if args.fail_typing_below is not None:
+        typing_threshold = args.fail_typing_below
+    else:
+        typing_threshold = config(
+            "PYBITES_QUALITY_FAIL_TYPING_BELOW", default=TYPING_TARGET, cast=float
+        )
 
     root = Path(args.root).resolve()
     if not root.exists():
@@ -299,7 +335,7 @@ def main() -> None:
         print(json.dumps(asdict(summary), indent=2))
         return
 
-    print(f"PyBites maintainability snapshot for: {summary.root}")
+    print(f"Pybites maintainability snapshot for: {summary.root}")
     print(f"  Files scanned              : {summary.files_scanned}")
     print(f"  Total SLOC                 : {summary.total_sloc}")
     print(f"  Avg SLOC per file          : {summary.avg_sloc_per_file:.1f}")
@@ -325,6 +361,25 @@ def main() -> None:
     print(f"  Max cognitive complexity   : {summary.max_cognitive_complexity}")
 
     print_hotspots(file_metrics, function_metrics, root=root)
+
+    fail = False
+    if summary.avg_mi < mi_threshold:
+        fail = True
+        print(
+            f"\n[FAIL] Average MI {summary.avg_mi:.1f} "
+            f"is below threshold {mi_threshold:.1f}"
+        )
+
+    if summary.typing_coverage < typing_threshold:
+        fail = True
+        print(
+            f"[FAIL] Typing coverage {summary.typing_coverage:.1f}% "
+            f"is below threshold {typing_threshold:.1f}%"
+        )
+
+    # 3) Exit based on fail flag
+    if fail:
+        raise SystemExit(1)
 
     print(
         "\nRun this before and after a training cycle, then diff the JSON "
