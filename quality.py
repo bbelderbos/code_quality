@@ -11,15 +11,15 @@ Usage:
 import argparse
 import ast
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from statistics import mean
 
-from radon.raw import analyze
-from radon.complexity import cc_visit, cc_rank
-from radon.metrics import mi_visit, mi_rank
 from complexipy import file_complexity
 from decouple import config
+from radon.complexity import cc_rank, cc_visit
+from radon.metrics import mi_rank, mi_visit
+from radon.raw import analyze
 
 MI_LOW = 60.0
 MI_HIGH = 80.0

@@ -1,33 +1,32 @@
-from pathlib import Path
 import subprocess
+from pathlib import Path
 from typing import Iterable
 
 from decouple import config
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
 from textual.events import Key
+from textual.screen import Screen
 from textual.widgets import (
-    Header,
-    Footer,
-    Input,
     Button,
     DataTable,
-    Static,
+    Footer,
+    Header,
+    Input,
     OptionList,
+    Static,
 )
-from textual.screen import Screen
-
 
 from quality import (
-    analyze_file,
-    summarize,
-    ProjectSummary,
-    walk_python_files,
+    COGNITIVE_COMPLEXITY_TARGET,
+    MI_HIGH,
+    MI_LOW,
     FileMetrics,
     FunctionMetrics,
-    MI_LOW,
-    MI_HIGH,
-    COGNITIVE_COMPLEXITY_TARGET,
+    ProjectSummary,
+    analyze_file,
+    summarize,
+    walk_python_files,
 )
 
 DEFAULT_CODE_REPO = config("DEFAULT_CODE_REPO", default="~/code")

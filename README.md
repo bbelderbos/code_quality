@@ -32,7 +32,7 @@ TODO: add diff'ing to see how code quality has changed over time.
 
 ## What the metrics mean
 
-- **MI (Maintainability Index)**  
+- **MI (Maintainability Index)**
   Heuristic score combining lines of code, complexity, Halstead metrics, and comments.
   We use these bands:
 
@@ -42,12 +42,12 @@ TODO: add diff'ing to see how code quality has changed over time.
 
   Use MI to compare files and track trends over time, not as an absolute judgement.
 
-- **Cognitive complexity**  
-  Sonar-style measure of how hard a function is to understand (nesting, branches, etc.).  
+- **Cognitive complexity**
+  Sonar-style measure of how hard a function is to understand (nesting, branches, etc.).
   Rule of thumb: keep per-function cognitive complexity **≤ 15**.
   Related: [Pybites Podcast 196: Robin Quintero on Complexipy](https://www.youtube.com/watch?v=plYStC24uwU)
 
-- **Typing coverage**  
+- **Typing coverage**
   Percentage of functions that have *any* type annotations (args and/or return).
 
 ## Example output
@@ -152,4 +152,3 @@ uvx pre-commit install
 ```
 
 Now it should run on each commit, preventing commits that lower code quality below your thresholds.
-
