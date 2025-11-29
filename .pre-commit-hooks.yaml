@@ -1,0 +1,5 @@
+- id: pybites-quality
+  name: Pybites maintainability probe
+  entry: pybites-quality
+  language: python
+  pass_filenames: false
