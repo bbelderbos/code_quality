@@ -10,6 +10,7 @@ Usage:
 
 import argparse
 import ast
+import heapq
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -263,11 +264,8 @@ def print_hotspots(
         f"(MI < {mi_low_threshold} = watch, >= {mi_target} = high):"
     )
 
-    # Avoid repeated string search with a generator expression instead of intermediate list
-    # Also, sort with heapq.nsmallest for efficiency with partial sorting
-    import heapq
-
     non_test_files = (f for f in files if "/tests/" not in f.path)
+    # using heapq for efficiency with partial sorting
     worst_files = heapq.nsmallest(top_n, non_test_files, key=lambda f: f.mi)
     for f in worst_files:
         if f.mi < mi_low_threshold:
