@@ -10,3 +10,16 @@ dependencies = [
     "python-decouple>=3.8",
     "textual>=6.6.0",
 ]
+
+[dependency-groups]
+dev = [
+    "codeflash>=0.18.6",
+]
+
+[tool.codeflash]
+# All paths are relative to this pyproject.toml's directory.
+module-root = "."
+tests-root = "tests"
+test-framework = "pytest"
+ignore-paths = []
+formatter-cmds = ["ruff check --exit-zero --fix $file", "ruff format $file"]
