@@ -230,22 +230,35 @@ def print_hotspots(
     top_n: int = 5,
     root: Path | None = None,
 ) -> None:
-    def rel(p: str) -> str:
-        if root is None:
-            return p
-        try:
-            return str(Path(p).relative_to(root))
-        except ValueError:
+    # Hoist rel out of the loop, don't construct Path repeatedly if root is None, cache result of rel if called for the same path multiple times
+    rel_cache: dict[str, str] = {}
+    if root is not None:
+
+        def rel(p: str) -> str:
+            if p in rel_cache:
+                return rel_cache[p]
+            try:
+                r = str(Path(p).relative_to(root))
+            except ValueError:
+                r = p
+            rel_cache[p] = r
+            return r
+    else:
+
+        def rel(p: str) -> str:
             return p
 
     print(
         f"\nTop {top_n} lowest MI files "
         f"(MI < {mi_low_threshold} = watch, >= {mi_target} = high):"
     )
-    # caring more about app code than tests for MI
-    # TODO: do this test mod filter in one place
-    non_test_files = [f for f in files if "/tests/" not in f.path]
-    worst_files = sorted(non_test_files, key=lambda f: f.mi)[:top_n]
+
+    # Avoid repeated string search with a generator expression instead of intermediate list
+    # Also, sort with heapq.nsmallest for efficiency with partial sorting
+    import heapq
+
+    non_test_files = (f for f in files if "/tests/" not in f.path)
+    worst_files = heapq.nsmallest(top_n, non_test_files, key=lambda f: f.mi)
     for f in worst_files:
         if f.mi < mi_low_threshold:
             label = "WATCH"
@@ -259,9 +272,9 @@ def print_hotspots(
         f"\nTop {top_n} most complex functions "
         f"(target cognitive complexity <= {cx_function_target}):"
     )
-    worst_fns = sorted(functions, key=lambda fn: fn.cognitive_complexity, reverse=True)[
-        :top_n
-    ]
+
+    # Use heapq.nlargest for partial sorting performance
+    worst_fns = heapq.nlargest(top_n, functions, key=lambda fn: fn.cognitive_complexity)
     for fn in worst_fns:
         flag = "OVER" if fn.cognitive_complexity > cx_function_target else "OK"
         print(
