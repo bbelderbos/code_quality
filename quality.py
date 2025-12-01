@@ -1,24 +1,31 @@
 """
-Quick-and-dirty local maintainability probe.
+Pybites code quality probe.
+
+Scans a Python project for maintainability (MI), complexity, typing coverage,
+and optional security issues, then prints a summary and hotspots.
 
 Usage:
-    python main.py /path/to/project
+    python quality.py [options] /path/to/project
 """
 
 import argparse
 import ast
+import heapq
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from statistics import mean
 
-from radon.raw import analyze
-from radon.complexity import cc_visit, cc_rank
-from radon.metrics import mi_visit, mi_rank
 from complexipy import file_complexity
+from decouple import config
+from radon.complexity import cc_rank, cc_visit
+from radon.metrics import mi_rank, mi_visit
+from radon.raw import analyze
 
-MI_LOW = 60.0  # below this: "watch"
-MI_HIGH = 80.0  # above this: "high"
+MI_LOW = 60.0
+MI_HIGH = 80.0
+TYPING_TARGET = 80.0
+COGNITIVE_COMPLEXITY_TARGET = 15
 
 
 @dataclass
@@ -172,34 +179,46 @@ def walk_python_files(root: Path) -> list[Path]:
 
 
 def summarize(files: list[FileMetrics], root: Path) -> ProjectSummary:
-    total_sloc = sum(f.sloc for f in files)
-    mi_values = [f.mi for f in files if f.mi > 0]
+    total_sloc = 0
+    mi_values = []
+    total_functions = 0
+    typed_functions = 0
 
-    low_mi_files = sum(f.mi < MI_LOW for f in files)
+    files_filtered = []
+    for f in files:
+        total_sloc += f.sloc
+        if f.mi > 0:
+            mi_values.append(f.mi)
+        if "/tests/" not in f.path:
+            files_filtered.append(f)
+            total_functions += f.total_functions
+            typed_functions += f.typed_functions
 
+    low_mi_files = 0
     high_cc = 0
     grade_counts: dict[str, int] = {}
-    for f in files:
+    cx_values = []
+
+    for f in files_filtered:
+        if f.mi < MI_LOW:
+            low_mi_files += 1
+        cx_values.append(f.cognitive_complexity)
         for grade, count in f.complexity_grades.items():
             grade_counts[grade] = grade_counts.get(grade, 0) + count
             if grade in ("D", "E", "F"):
                 high_cc += count
 
-    total_functions = sum(f.total_functions for f in files)
-    typed_functions = sum(f.typed_functions for f in files)
     typing_coverage = (
         typed_functions / total_functions * 100 if total_functions else 0.0
     )
-
-    cx_values = [f.cognitive_complexity for f in files]
     avg_cx = mean(cx_values) if cx_values else 0.0
     max_cx = max(cx_values) if cx_values else 0
 
     return ProjectSummary(
         root=str(root),
-        files_scanned=len(files),
+        files_scanned=len(files_filtered),
         total_sloc=total_sloc,
-        avg_sloc_per_file=total_sloc / len(files) if files else 0.0,
+        avg_sloc_per_file=total_sloc / len(files_filtered) if files_filtered else 0.0,
         avg_mi=mean(mi_values) if mi_values else 0.0,
         low_mi_files=low_mi_files,
         high_complexity_functions=high_cc,
@@ -218,25 +237,36 @@ def print_hotspots(
     *,
     mi_low_threshold: float = MI_LOW,
     mi_target: float = MI_HIGH,
-    cx_function_target: int = 15,
+    cx_function_target: int = COGNITIVE_COMPLEXITY_TARGET,
     top_n: int = 5,
     root: Path | None = None,
 ) -> None:
-    def rel(p: str) -> str:
-        if root is None:
-            return p
-        try:
-            return str(Path(p).relative_to(root))
-        except ValueError:
+    # Hoist rel out of the loop, don't construct Path repeatedly if root is None, cache result of rel if called for the same path multiple times
+    rel_cache: dict[str, str] = {}
+    if root is not None:
+
+        def rel(p: str) -> str:
+            if p in rel_cache:
+                return rel_cache[p]
+            try:
+                r = str(Path(p).relative_to(root))
+            except ValueError:
+                r = p
+            rel_cache[p] = r
+            return r
+    else:
+
+        def rel(p: str) -> str:
             return p
 
     print(
         f"\nTop {top_n} lowest MI files "
         f"(MI < {mi_low_threshold} = watch, >= {mi_target} = high):"
     )
-    # caring more about app code than tests for MI
-    non_test_files = [f for f in files if "/tests/" not in f.path]
-    worst_files = sorted(non_test_files, key=lambda f: f.mi)[:top_n]
+
+    non_test_files = (f for f in files if "/tests/" not in f.path)
+    # using heapq for efficiency with partial sorting
+    worst_files = heapq.nsmallest(top_n, non_test_files, key=lambda f: f.mi)
     for f in worst_files:
         if f.mi < mi_low_threshold:
             label = "WATCH"
@@ -250,9 +280,9 @@ def print_hotspots(
         f"\nTop {top_n} most complex functions "
         f"(target cognitive complexity <= {cx_function_target}):"
     )
-    worst_fns = sorted(functions, key=lambda fn: fn.cognitive_complexity, reverse=True)[
-        :top_n
-    ]
+
+    # Use heapq.nlargest for partial sorting performance
+    worst_fns = heapq.nlargest(top_n, functions, key=lambda fn: fn.cognitive_complexity)
     for fn in worst_fns:
         flag = "OVER" if fn.cognitive_complexity > cx_function_target else "OK"
         print(
@@ -262,7 +292,7 @@ def print_hotspots(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Quick PyBites maintainability probe (static only)."
+        description="Quick Pybites maintainability probe (static only)."
     )
     parser.add_argument(
         "root",
@@ -275,7 +305,34 @@ def main() -> None:
         action="store_true",
         help="Output JSON instead of human-readable text",
     )
+    parser.add_argument(
+        "--fail-mi-below",
+        type=float,
+        default=None,
+        help="Fail if average MI is below this value",
+    )
+    parser.add_argument(
+        "--fail-typing-below",
+        type=float,
+        default=None,
+        help="Fail if typing coverage (functions) is below this value",
+    )
+
     args = parser.parse_args()
+
+    if args.fail_mi_below is not None:
+        mi_threshold = args.fail_mi_below
+    else:
+        mi_threshold = config(
+            "PYBITES_QUALITY_FAIL_MI_BELOW", default=MI_LOW, cast=float
+        )
+
+    if args.fail_typing_below is not None:
+        typing_threshold = args.fail_typing_below
+    else:
+        typing_threshold = config(
+            "PYBITES_QUALITY_FAIL_TYPING_BELOW", default=TYPING_TARGET, cast=float
+        )
 
     root = Path(args.root).resolve()
     if not root.exists():
@@ -299,7 +356,7 @@ def main() -> None:
         print(json.dumps(asdict(summary), indent=2))
         return
 
-    print(f"PyBites maintainability snapshot for: {summary.root}")
+    print(f"Pybites maintainability snapshot for: {summary.root}")
     print(f"  Files scanned              : {summary.files_scanned}")
     print(f"  Total SLOC                 : {summary.total_sloc}")
     print(f"  Avg SLOC per file          : {summary.avg_sloc_per_file:.1f}")
@@ -325,6 +382,25 @@ def main() -> None:
     print(f"  Max cognitive complexity   : {summary.max_cognitive_complexity}")
 
     print_hotspots(file_metrics, function_metrics, root=root)
+
+    fail = False
+    if summary.avg_mi < mi_threshold:
+        fail = True
+        print(
+            f"\n[FAIL] Average MI {summary.avg_mi:.1f} "
+            f"is below threshold {mi_threshold:.1f}"
+        )
+
+    if summary.typing_coverage < typing_threshold:
+        fail = True
+        print(
+            f"[FAIL] Typing coverage {summary.typing_coverage:.1f}% "
+            f"is below threshold {typing_threshold:.1f}%"
+        )
+
+    # 3) Exit based on fail flag
+    if fail:
+        raise SystemExit(1)
 
     print(
         "\nRun this before and after a training cycle, then diff the JSON "
