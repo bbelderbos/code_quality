@@ -30,6 +30,30 @@ uv run quality.py /path/to/project --json > baseline.json
 
 TODO: add diff'ing to see how code quality has changed over time.
 
+## Interactive TUI dashboard
+
+Prefer a visual overview? There’s a small Textual TUI that wraps the same metrics:
+
+```bash
+uv run tui.py
+```
+
+What it shows:
+
+- Top input + **Scan** button – enter a path and rescan.
+- Summary panel – MI, SLOC, typing coverage, cognitive complexity, skipped files.
+- Left table – lowest-MI (non-test) files.
+- Right table – most complex functions (by cognitive complexity).
+
+Key bindings:
+
+- `q` – quit
+- `r` – rescan current path
+- `p` – pick a repo under `~/code` (fuzzy filter over project directories)
+- `Enter` on the **functions** table – open the selected function in `$EDITOR` at the right line (defaults to `vim` if `$EDITOR` is not set).
+
+The TUI is ideal for quickly exploring hot spots in a project and jumping straight into the code to refactor.
+
 ## What the metrics mean
 
 - **MI (Maintainability Index)**
