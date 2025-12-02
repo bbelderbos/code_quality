@@ -17,6 +17,12 @@ dev = [
     "pytest-cov>=7.0.0",
 ]
 
+[tool.setuptools]
+py-modules = ["quality"]
+
+[project.scripts]
+pybites-quality = "quality:main"
+
 [tool.codeflash]
 # All paths are relative to this pyproject.toml's directory.
 module-root = "."
