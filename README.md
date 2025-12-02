@@ -150,7 +150,7 @@ Add this to your `.pre-commit-config.yaml`:
 
 ```yaml
 repos:
-  - repo: https://github.com/pybites/code_quality
+  - repo: https://github.com/bbelderbos/code_quality
     rev: v0.1.0
     hooks:
       - id: pybites-quality
