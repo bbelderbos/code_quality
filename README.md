@@ -151,13 +151,15 @@ Add this to your `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/bbelderbos/code_quality
-    rev: v0.1.0
+    rev: main
     hooks:
       - id: pybites-quality
         args: ["--fail-mi-below", "60", "--fail-typing-below", "80"]
 ```
 
 Or leave `args` off if you want to control these by env vars or just use the script defaults.
+
+TODO: `main` is for testing, I will update this to a proper release tag later.
 
 **Note:** By default, the hook scans the current directory (`.`) which means the entire repository is scanned on every commit. For large repositories, this may be slow. You can customize the scanned directory by adding a path argument:
 
