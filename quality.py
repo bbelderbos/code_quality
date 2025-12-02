@@ -343,8 +343,12 @@ def main() -> None:
     function_metrics: list[FunctionMetrics] = []
 
     for path in py_files:
-        result = analyze_file(path)
-        if result is None:
+        try:
+            result = analyze_file(path)
+            if result is None:
+                continue
+        except SyntaxError:
+            # Skip files radon can't parse (or optionally log them somewhere)
             continue
         fm, fns = result
         file_metrics.append(fm)
