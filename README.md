@@ -60,9 +60,9 @@ The TUI is ideal for quickly exploring hot spots in a project and jumping straig
   Heuristic score combining lines of code, complexity, Halstead metrics, and comments.
   We use these bands:
 
-  - `< 60` → **watch** (keep an eye on these files)
-  - `60–80` → **moderate**
-  - `> 80` → **high**
+  - `< 40` → **watch** (keep an eye on these files)
+  - `40–70` → **moderate**
+  - `> 70` → **high**
 
   Use MI to compare files and track trends over time, not as an absolute judgement.
 
@@ -78,36 +78,35 @@ The TUI is ideal for quickly exploring hot spots in a project and jumping straig
 
 ```text
 $ uv run quality.py ~/code/search
+
 Pybites maintainability snapshot for: /Users/bbelderbos/code/search
-  Files scanned              : 16
-  Total SLOC                 : 591
-  Avg SLOC per file          : 36.9
-  Avg MI (all files)         : 68.4  (<60 = watch, 60–80 = moderate, >80 = high)
+  Files scanned              : 10
+  Total SLOC                 : 592
+  Avg SLOC per file          : 59.2
+  Avg MI (all files)         : 68.4  (PyBites thresholds: <40.0 = watch, 40.0–70.0 = moderate, >70.0 = high)
   Note: MI is a heuristic; use it to compare files and track trends, not as an absolute judgement.
-  Files with low MI (<60)    : 10
+  Files with low MI (<40)    : 0
   High-CC funcs (D/E/F)      : 0
   CC grades (all files)      :
-    A: 44
-    B: 1
-    C: 1
+    A: 31
 
-  Total functions            : 37
+  Total functions            : 23
   Typed functions            : 21
-  Typing coverage (functions): 56.8%
+  Typing coverage (functions): 91.3%
 
-  Avg cognitive complexity   : 2.5
-  Max cognitive complexity   : 7
+  Avg cognitive complexity   : 3.0
+  Max cognitive complexity   : 6
 
-Top 5 lowest MI files (MI < 60.0 = watch, >= 80.0 = high):
-   54.0 [WATCH]  src/pybites_search/base.py
-   55.6 [WATCH]  src/pybites_search/all_content.py
+Top 5 lowest MI files (MI < 40.0 = watch, >= 70.0 = high):
+   54.0 [OK]  src/pybites_search/base.py
+   55.6 [OK]  src/pybites_search/all_content.py
    60.1 [OK]  src/pybites_search/youtube.py
    60.1 [OK]  src/pybites_search/podcast.py
    60.2 [OK]  src/pybites_search/bite.py
 
 Top 5 most complex functions (target cognitive complexity <= 15):
     7 [OK]  tests/test_tip.py:54  test_show_tip_matches
-    4 [OK]  src/pybites_search/all_content.py:24  AllSearch::show_matches
+    4 [OK]  src/pybites_search/all_content.py:25  AllSearch::show_matches
     4 [OK]  src/pybites_search/base.py:46  PybitesSearch::show_matches
     3 [OK]  tests/test_all_content.py:82  test_all_search_show_matches
     3 [OK]  src/pybites_search/youtube.py:11  YouTubeSearch::match_content
@@ -142,7 +141,7 @@ If the average MI is below `mi_threshold` or typing coverage is below `typing_th
 
 You can either specify these thresholds via command-line arguments or set them as environment variables: `PYBITES_QUALITY_FAIL_MI_BELOW` and `PYBITES_QUALITY_FAIL_TYPING_BELOW`.
 
-If neither are used, we default to a `MI_LOW` of 60 and a `TYPING_TARGET` of 80.
+If neither are used, we default to a `MI_LOW` of 40 and a `TYPING_TARGET` of 80.
 
 ## Pre-commit integration
 
@@ -154,7 +153,7 @@ repos:
     rev: main
     hooks:
       - id: pybites-quality
-        args: ["--fail-mi-below", "60", "--fail-typing-below", "80"]
+        args: ["--fail-mi-below", "40", "--fail-typing-below", "80"]
 ```
 
 Or leave `args` off if you want to control these by env vars or just use the script defaults.
@@ -165,10 +164,10 @@ TODO: `main` is for testing, I will update this to a proper release tag later.
 
 ```yaml
 # Only scan the src directory
-args: ["src", "--fail-mi-below", "60", "--fail-typing-below", "80"]
+args: ["src", "--fail-mi-below", "40", "--fail-typing-below", "80"]
 
 # Explicitly scan current directory (same as default)
-args: [".", "--fail-mi-below", "60"]
+args: [".", "--fail-mi-below", "40"]
 ```
 
 Then run:

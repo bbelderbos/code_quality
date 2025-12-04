@@ -22,8 +22,8 @@ from radon.complexity import cc_rank, cc_visit
 from radon.metrics import mi_rank, mi_visit
 from radon.raw import analyze
 
-MI_LOW = 60.0
-MI_HIGH = 80.0
+MI_LOW = 40.0
+MI_HIGH = 70.0
 TYPING_TARGET = 80.0
 COGNITIVE_COMPLEXITY_TARGET = 15
 
@@ -375,8 +375,7 @@ def main() -> None:
     print(f"  Avg SLOC per file          : {summary.avg_sloc_per_file:.1f}")
     print(
         f"  Avg MI (all files)         : {summary.avg_mi:.1f}  "
-        "(PyBites thresholds: <60 = watch, 60–80 = moderate, >80 = high)"
-        f"(<{MI_LOW:.0f} = watch, {MI_LOW:.0f}–{MI_HIGH:.0f} = moderate, >{MI_HIGH:.0f} = high)"
+        f"(PyBites thresholds: <{MI_LOW} = watch, {MI_LOW}–{MI_HIGH} = moderate, >{MI_HIGH} = high)"
     )
     print(
         "  Note: MI is a heuristic; use it to compare files and track trends, "
