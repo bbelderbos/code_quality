@@ -154,24 +154,39 @@ class QualityApp(App):
         summary, worst_files, worst_fns, skipped = scan_project(root)
         self.current_functions = worst_fns
 
-        # summary text
         summary_text = (
             f"[b]Pybites maintainability snapshot[/b]\n"
             f"Root: {summary.root}\n"
             f"Files scanned          : {summary.files_scanned}\n"
         )
         if skipped:
-            summary_text += f"Files skipped (syntax) : {len(skipped)} ({', '.join(str(p) for p in skipped)})\n"
+            summary_text += (
+                "Files skipped (syntax) : "
+                f"{len(skipped)} ({', '.join(str(p) for p in skipped)})\n"
+            )
         summary_text += (
             f"Total SLOC             : {summary.total_sloc}\n"
             f"Avg SLOC per file      : {summary.avg_sloc_per_file:.1f}\n"
             f"Avg MI                 : {summary.avg_mi:.1f} "
             f"(<{MI_LOW:.0f}=watch, {MI_LOW:.0f}–{MI_HIGH:.0f}=moderate, >{MI_HIGH:.0f}=high)\n"
             f"Low MI files (<{MI_LOW:.0f}) : {summary.low_mi_files}\n"
+            f"High-CC funcs (D/E/F)  : {summary.high_complexity_functions}\n"
+        )
+
+        if summary.cc_grade_counts:
+            grades = ", ".join(
+                f"{grade}={summary.cc_grade_counts[grade]}"
+                for grade in sorted(summary.cc_grade_counts)
+            )
+            summary_text += f"CC grades (all files)  : {grades}\n"
+
+        summary_text += (
             f"Typing coverage        : {summary.typing_coverage:.1f}% "
             f"({summary.typed_functions}/{summary.total_functions} funcs)\n"
             f"Avg cognitive compl.   : {summary.avg_cognitive_complexity:.1f}\n"
             f"Max cognitive compl.   : {summary.max_cognitive_complexity}\n"
+            "MI is a heuristic – use it to compare files and track trends, "
+            "not as an absolute judgement.\n"
         )
         self.summary_box.update(summary_text)
 
