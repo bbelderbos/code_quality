@@ -169,7 +169,16 @@ def analyze_file(path: Path) -> tuple[FileMetrics, list[FunctionMetrics]] | None
 
 
 def walk_python_files(root: Path) -> list[Path]:
-    ignore_dirs = {".git", ".venv", "venv", ".mypy_cache", "__pycache__"}
+    ignore_dirs = {
+        ".git",
+        ".venv",
+        "venv",
+        ".mypy_cache",
+        "__pycache__",
+        "build",
+        "dist",
+        ".tox",
+    }
     paths: list[Path] = []
     for p in root.rglob("*.py"):
         if any(part in ignore_dirs for part in p.parts):
