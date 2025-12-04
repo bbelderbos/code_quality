@@ -375,6 +375,7 @@ def main() -> None:
     print(f"  Avg SLOC per file          : {summary.avg_sloc_per_file:.1f}")
     print(
         f"  Avg MI (all files)         : {summary.avg_mi:.1f}  "
+        "(PyBites thresholds: <60 = watch, 60–80 = moderate, >80 = high)"
         f"(<{MI_LOW:.0f} = watch, {MI_LOW:.0f}–{MI_HIGH:.0f} = moderate, >{MI_HIGH:.0f} = high)"
     )
     print(
