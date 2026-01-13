@@ -1,7 +1,7 @@
 [project]
-name = "code-quality"
+name = "pybites-quality"
 version = "0.1.0"
-description = "Add your description here"
+description = "A static code quality and maintainability analysis tool for Python projects"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -14,18 +14,31 @@ dependencies = [
 [dependency-groups]
 dev = [
     "codeflash>=0.18.6",
+    "pytest>=8.0.0",
     "pytest-cov>=7.0.0",
 ]
 
-[tool.setuptools]
-py-modules = ["quality"]
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [project.scripts]
-pybites-quality = "quality:main"
+pybites-quality = "pybites_quality.core:main"
+pybites-quality-tui = "pybites_quality.tui:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+omit = ["src/pybites_quality/tui.py"]
 
 [tool.codeflash]
 # All paths are relative to this pyproject.toml's directory.
-module-root = "."
+module-root = "src"
 tests-root = "tests"
 test-framework = "pytest"
 ignore-paths = []

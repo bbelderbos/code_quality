@@ -1,11 +1,11 @@
 """
-Pybites code quality probe.
+Pybites code quality probe - core analysis module.
 
 Scans a Python project for maintainability (MI), complexity, typing coverage,
 and optional security issues, then prints a summary and hotspots.
 
-Usage:
-    python quality.py [options] /path/to/project
+Usage (CLI):
+    pybites-quality [options] /path/to/project
 """
 
 import argparse

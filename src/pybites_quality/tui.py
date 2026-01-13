@@ -1,3 +1,10 @@
+"""
+Pybites code quality TUI - interactive terminal dashboard.
+
+Usage:
+    pybites-quality-tui
+"""
+
 import subprocess
 from pathlib import Path
 from typing import Iterable
@@ -17,7 +24,7 @@ from textual.widgets import (
     Static,
 )
 
-from quality import (
+from pybites_quality.core import (
     COGNITIVE_COMPLEXITY_TARGET,
     MI_HIGH,
     MI_LOW,
@@ -322,5 +329,10 @@ class RepoPicker(Screen):
         app.pop_screen()
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Entry point for the TUI."""
     QualityApp().run()
+
+
+if __name__ == "__main__":
+    main()
