@@ -143,7 +143,7 @@ class TestScanProject:
     def test_scan_project_basic(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         # Create a simple project structure
         monkeypatch.setattr(tui, "walk_python_files", lambda r: [tmp_path / "app.py"])
-        monkeypatch.setattr(tui, "analyze_file", lambda p: _fake_metrics(p))
+        monkeypatch.setattr(tui, "analyze_file", _fake_metrics)
 
         summary, worst_files, worst_fns, skipped = tui.scan_project(tmp_path)
 
