@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-import quality
-from quality import (
+from pybites_quality import core
+from pybites_quality.core import (
     FileMetrics,
     FunctionMetrics,
     count_typed_functions,
@@ -95,15 +95,15 @@ def _make_fm(
 def test_summarize_excludes_test_files_from_low_mi(tmp_path: Path):
     root = tmp_path
 
-    app_file = _make_fm(path="app/module.py", mi=55.0)  # low MI
-    test_file = _make_fm(path="app/tests/test_module.py", mi=40.0)
+    app_file = _make_fm(path="app/module.py", mi=35.0)  # low MI (< 40.0)
+    test_file = _make_fm(path="app/tests/test_module.py", mi=30.0)
 
     summary = summarize([app_file, test_file], root)
 
     # low_mi_files only counts non-test files
     assert summary.low_mi_files == 1
     # avg_mi still includes both files (uses original list)
-    assert summary.avg_mi == pytest.approx((55.0 + 40.0) / 2)
+    assert summary.avg_mi == pytest.approx((35.0 + 30.0) / 2)
 
     # typing + cx metrics only use non-test files (after the reassign)
     assert summary.total_functions == app_file.total_functions
@@ -120,10 +120,10 @@ def test_summarize_excludes_test_files_from_low_mi(tmp_path: Path):
 
 def test_print_hotspots_orders_and_labels(capsys: pytest.CaptureFixture):
     files = [
-        _make_fm(path="proj/a.py", mi=50.0),  # WATCH (<60)
-        _make_fm(path="proj/b.py", mi=65.0),
+        _make_fm(path="proj/a.py", mi=35.0),  # WATCH (< 40)
+        _make_fm(path="proj/b.py", mi=55.0),  # OK (40-70)
         _make_fm(path="proj/tests/test_c.py", mi=30.0),  # excluded for MI listing
-        _make_fm(path="proj/d.py", mi=85.0),  # GOOD (>=80)
+        _make_fm(path="proj/d.py", mi=85.0),  # GOOD (>= 70)
     ]
     fns = [
         FunctionMetrics(
@@ -140,12 +140,12 @@ def test_print_hotspots_orders_and_labels(capsys: pytest.CaptureFixture):
         ),
     ]
 
-    quality.print_hotspots(
+    core.print_hotspots(
         files,
         fns,
-        mi_low_threshold=quality.MI_LOW,
-        mi_target=quality.MI_HIGH,
-        cx_function_target=quality.COGNITIVE_COMPLEXITY_TARGET,
+        mi_low_threshold=core.MI_LOW,
+        mi_target=core.MI_HIGH,
+        cx_function_target=core.COGNITIVE_COMPLEXITY_TARGET,
         top_n=2,
         root=Path("proj"),
     )
@@ -184,19 +184,19 @@ def test_main_passes_when_thresholds_met(
     root = tmp_path
 
     # monkeypatch file discovery + analysis
-    monkeypatch.setattr(quality, "walk_python_files", lambda r: [root / "dummy.py"])
-    monkeypatch.setattr(quality, "analyze_file", lambda p: _fake_metrics_for_main(p))
+    monkeypatch.setattr(core, "walk_python_files", lambda r: [root / "dummy.py"])
+    monkeypatch.setattr(core, "analyze_file", lambda p: _fake_metrics_for_main(p))
 
     # config should return defaults if not overridden on CLI
     def fake_config(name, default=None, cast=float):
         return default
 
-    monkeypatch.setattr(quality, "config", fake_config)
+    monkeypatch.setattr(core, "config", fake_config)
 
-    argv = ["quality.py", str(root)]
+    argv = ["pybites-quality", str(root)]
     monkeypatch.setattr(sys, "argv", argv)
 
-    quality.main()
+    core.main()
     out = capsys.readouterr().out
     assert "Pybites maintainability snapshot for" in out
     assert "[FAIL]" not in out
@@ -207,8 +207,8 @@ def test_main_fails_when_env_thresholds_higher_than_summary(
 ):
     root = tmp_path
 
-    monkeypatch.setattr(quality, "walk_python_files", lambda r: [root / "dummy.py"])
-    monkeypatch.setattr(quality, "analyze_file", lambda p: _fake_metrics_for_main(p))
+    monkeypatch.setattr(core, "walk_python_files", lambda r: [root / "dummy.py"])
+    monkeypatch.setattr(core, "analyze_file", lambda p: _fake_metrics_for_main(p))
 
     # Make env thresholds stricter than our fake metrics
     def fake_config(name, default=None, cast=float):
@@ -218,13 +218,13 @@ def test_main_fails_when_env_thresholds_higher_than_summary(
             return 110.0  # higher than 100%
         return default
 
-    monkeypatch.setattr(quality, "config", fake_config)
+    monkeypatch.setattr(core, "config", fake_config)
 
-    argv = ["quality.py", str(root)]
+    argv = ["pybites-quality", str(root)]
     monkeypatch.setattr(sys, "argv", argv)
 
     with pytest.raises(SystemExit) as exc:
-        quality.main()
+        core.main()
 
     assert exc.value.code == 1
     out = capsys.readouterr().out
@@ -237,8 +237,8 @@ def test_main_cli_threshold_overrides_env(
 ):
     root = tmp_path
 
-    monkeypatch.setattr(quality, "walk_python_files", lambda r: [root / "dummy.py"])
-    monkeypatch.setattr(quality, "analyze_file", lambda p: _fake_metrics_for_main(p))
+    monkeypatch.setattr(core, "walk_python_files", lambda r: [root / "dummy.py"])
+    monkeypatch.setattr(core, "analyze_file", lambda p: _fake_metrics_for_main(p))
 
     # config would make it fail if used, so this verifies CLI wins
     def fake_config(name, default=None, cast=float):
@@ -248,11 +248,11 @@ def test_main_cli_threshold_overrides_env(
             return 10.0
         return default
 
-    monkeypatch.setattr(quality, "config", fake_config)
+    monkeypatch.setattr(core, "config", fake_config)
 
     # thresholds via CLI are low, so it should pass
     argv = [
-        "quality.py",
+        "pybites-quality",
         str(root),
         "--fail-mi-below",
         "50",
@@ -261,7 +261,7 @@ def test_main_cli_threshold_overrides_env(
     ]
     monkeypatch.setattr(sys, "argv", argv)
 
-    quality.main()
+    core.main()
     out = capsys.readouterr().out
     assert "[FAIL]" not in out
 
@@ -271,18 +271,18 @@ def test_main_json_output(
 ):
     root = tmp_path
 
-    monkeypatch.setattr(quality, "walk_python_files", lambda r: [root / "dummy.py"])
-    monkeypatch.setattr(quality, "analyze_file", lambda p: _fake_metrics_for_main(p))
+    monkeypatch.setattr(core, "walk_python_files", lambda r: [root / "dummy.py"])
+    monkeypatch.setattr(core, "analyze_file", lambda p: _fake_metrics_for_main(p))
     monkeypatch.setattr(
-        quality,
+        core,
         "config",
         lambda name, default=None, cast=float: default,
     )
 
-    argv = ["quality.py", str(root), "--json"]
+    argv = ["pybites-quality", str(root), "--json"]
     monkeypatch.setattr(sys, "argv", argv)
 
-    quality.main()
+    core.main()
     out = capsys.readouterr().out
     data = json.loads(out)
 
@@ -293,11 +293,11 @@ def test_main_json_output(
 
 
 def test_main_nonexistent_root_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    argv = ["quality.py", str(tmp_path / "does_not_exist")]
+    argv = ["pybites-quality", str(tmp_path / "does_not_exist")]
     monkeypatch.setattr(sys, "argv", argv)
 
     with pytest.raises(SystemExit) as exc:
-        quality.main()
+        core.main()
 
     # message is passed to SystemExit
     assert "Path not found" in str(exc.value)
@@ -320,7 +320,7 @@ def test_analyze_file_smoke(tmp_path: Path):
         encoding="utf-8",
     )
 
-    result = quality.analyze_file(path)
+    result = core.analyze_file(path)
     assert result is not None
 
     fm, fns = result
@@ -349,11 +349,11 @@ def test_print_hotspots_relative_errors_and_good_label(tmp_path: Path, capsys):
         )
     ]
 
-    quality.print_hotspots(
+    core.print_hotspots(
         [fm],
         fns,
-        mi_low_threshold=quality.MI_LOW,
-        mi_target=quality.MI_HIGH,
+        mi_low_threshold=core.MI_LOW,
+        mi_target=core.MI_HIGH,
         top_n=1,
         root=root,
     )
@@ -382,16 +382,14 @@ def test_main_skips_files_where_analyze_file_returns_none(
             return None
         return _fake_metrics_for_main(path)
 
-    monkeypatch.setattr(quality, "walk_python_files", fake_walk)
-    monkeypatch.setattr(quality, "analyze_file", fake_analyze)
-    monkeypatch.setattr(
-        quality, "config", lambda name, default=None, cast=float: default
-    )
+    monkeypatch.setattr(core, "walk_python_files", fake_walk)
+    monkeypatch.setattr(core, "analyze_file", fake_analyze)
+    monkeypatch.setattr(core, "config", lambda name, default=None, cast=float: default)
 
-    argv = ["quality.py", str(root)]
+    argv = ["pybites-quality", str(root)]
     monkeypatch.setattr(sys, "argv", argv)
 
-    quality.main()
+    core.main()
     out = capsys.readouterr().out
 
     # Only one file should be counted

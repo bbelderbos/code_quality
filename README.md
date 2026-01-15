@@ -16,26 +16,44 @@ cd code_quality
 uv sync
 ```
 
+Or install directly from GitHub:
+
+```bash
+uv pip install git+https://github.com/bbelderbos/code_quality.git
+```
+
 ## Usage
 
 ```bash
-uv run quality.py /path/to/project
+pybites-quality /path/to/project
+```
+
+Or if using `uv run` from the cloned repo:
+
+```bash
+uv run pybites-quality /path/to/project
 ```
 
 Use `--json` to get machine-readable output you can diff over time:
 
 ```bash
-uv run quality.py /path/to/project --json > baseline.json
+pybites-quality /path/to/project --json > baseline.json
 ```
 
 TODO: add diff'ing to see how code quality has changed over time.
 
 ## Interactive TUI dashboard
 
-Prefer a visual overview? There’s a small Textual TUI that wraps the same metrics:
+Prefer a visual overview? There's a small Textual TUI that wraps the same metrics:
 
 ```bash
-uv run tui.py
+pybites-quality-tui
+```
+
+Or with `uv run`:
+
+```bash
+uv run pybites-quality-tui
 ```
 
 What it shows:
@@ -77,7 +95,7 @@ The TUI is ideal for quickly exploring hot spots in a project and jumping straig
 ## Example output
 
 ```text
-$ uv run quality.py ~/code/search
+$ pybites-quality ~/code/search
 
 Pybites maintainability snapshot for: /Users/bbelderbos/code/search
   Files scanned              : 10
@@ -126,10 +144,10 @@ Run this before and after a training cycle, then diff the JSON output and hotspo
 
 ## Exit code
 
-You can make the script fail (exit code != 0) based on thresholds using these options:
+You can make the tool fail (exit code != 0) based on thresholds using these options:
 
 ```text
-$ uv run quality.py --help
+$ pybites-quality --help
 ...
   --fail-mi-below FAIL_MI_BELOW
                         Fail if average MI is below this value
@@ -177,3 +195,32 @@ uvx pre-commit install
 ```
 
 Now it should run on each commit, preventing commits that lower code quality below your thresholds.
+
+## Development
+
+The project uses a standard src layout:
+
+```
+code_quality/
+├── src/
+│   └── pybites_quality/
+│       ├── __init__.py
+│       ├── core.py      # Main analysis logic
+│       └── tui.py       # TUI dashboard
+├── tests/
+│   ├── test_core.py
+│   └── test_tui.py
+└── pyproject.toml
+```
+
+To run tests:
+
+```bash
+uv run pytest tests/
+```
+
+With coverage:
+
+```bash
+uv run pytest tests/ --cov=pybites_quality --cov-report=term-missing
+```
